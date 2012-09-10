@@ -1,0 +1,68 @@
+//reset
+@import "reset.less";
+
+body {
+ background-color: fadeout(#eee, 80); 
+}
+#window {
+  font-size: 20px;
+  font-family: "helvetica neue";
+  font-weight: 100;
+  margin: auto;
+  margin-top: 150px;
+  box-shadow: 0 0.5px 0 0 #ffffff inset, 0 1px 2px 0 #B3B3B3;
+  width: 400px;
+  padding: 10px 2px;
+  background-color: white;
+  position: relative;
+  .input {
+    width: 100%; 
+    font-weight: 100;
+    font-size: 100;
+    font-family: inherit;
+    padding: 3px 3px 3px 15px;
+    font-size: 23px;
+    border: none;
+    outline: none;
+  }
+  .margin {
+    position: absolute;
+    top: 1%;
+    height: 98%;
+    left: 10px;
+    border-left: solid 1px fadeout(#d70, 60)
+  }
+  #tasks {
+    .task {
+      height: 20px;
+      margin-top: 5px;
+      padding: 7px 5px 3px 15px;
+      border-top: solid 1px lighten(lightblue, 10);
+    }
+  }
+}
+
+// task styles
+.tag {
+  color: #0881B3;
+  font-weight: 200;
+}
+.auto {
+  font-style: italic;
+  margin-left: 13px;
+}
+.done {
+  text-decoration: line-through;
+  font-style: italic;
+  color: #888;
+  .tag {
+   color: fadeout(#0881B3, 50); 
+  }
+}
+.date {
+  color: #d70000;
+  font-weight: 200;
+}
+.center {
+  text-align: center;
+}
