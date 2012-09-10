@@ -11,15 +11,125 @@ var AppView = Backbone.View.extend({
 		this.tasklist.render();
 	},
 	events: {
-		"keypress input": "keypress"
+		"keydown input": "keypress"
 	},
 	keypress: function(e){
-		if (e.keyCode == 13) {
-			this.createtask();
+		if (e.keyCode === 13) {
+			this.executecommand();
+		} else if (e.keyCode === 9) {
+			e.preventDefault();
+			this.autocomplete();
 		}
 	},
-	createtask: function(){
+	autocomplete: function(){
 		var inputstring = this.$(".input").val();
+
+		// check for commands keys
+		if (inputstring[0] === "+" && inputstring.length > 1) {
+			if (inputstring.length < 5) {
+				var isDone = true;
+				var isEdit = true;
+				for (var i = 0; i < inputstring.length; i++) {
+					// done
+					if (inputstring[i] !== "+done"[i]) {
+						isDone = false;
+					}
+
+					// edit
+					if (inputstring[i] !== "+edit"[i]) {
+						isEdit = false;
+					}
+				}
+
+				if (isDone) {
+					return this.$(".input").val("+done ");
+				} else if (isEdit) {
+					return this.$(".input").val("+edit ");
+				}
+			}
+
+			if (inputstring.length < 8) {
+				// archive
+				var isArchive = true;
+				for (var j = 0; j < inputstring.length; j++) {
+					// done
+					if (inputstring[j] !== "+archive"[j]) {
+						isArchive = false;
+					}
+				}
+
+				if (isArchive) {
+					return this.$(".input").val("+archive ");
+				}
+			}
+		}
+
+
+		// autocomplete tasks
+		var tokens = inputstring.split(" ");
+		if (tokens.length < 2) {
+			return;
+		}
+		
+		tokens.splice(0, 1);
+		var prefix = tokens.join(" ");
+	},
+	executecommand: function(){
+		var inputstring = this.$(".input").val();
+		var tokens = inputstring.split(" ");
+
+		var prefix, matches;
+		if (tokens[0] === "+done") {
+			tokens.splice(0, 1);
+			prefix = tokens.join(" ");
+
+			matches = this.tasks.filter(function(task){
+				return _(task.get('input')).startsWith(prefix);
+			});
+
+			_.each(matches, function(task){
+				task.done();
+			});
+
+			
+			//clear input field
+			return this.$(".input").val("");
+		} else if (tokens[0] === "+edit") {
+			tokens.splice(0, 1);
+			prefix = tokens.join(" ");
+
+			matches = this.tasks.filter(function(task){
+				return _(task.get('input')).startsWith(prefix);
+			});
+
+			
+			if (matches.length !== 1) {
+				// TODO
+				// only can edit one.
+				return;
+			}
+
+
+			// remove from collection
+			var match = matches[0];
+			this.tasks.remove(match);
+			
+			//replace input field value
+			return this.$(".input").val(match.get('input'));
+		} else if (tokens[0] === "+archive") {
+			matches = this.tasks.filter(function(task){
+				return task.get('done') === true;
+			});
+
+			this.tasks.remove(matches);
+			
+			//replace input field value
+			return this.$(".input").val("");
+		} else {
+			this.createtask(inputstring);
+		}
+	},
+	createtask: function(inputstring){
 		var task = new Task({input: inputstring});
 		this.tasks.add(task);
 
@@ -51,25 +161,51 @@ var TaskListView = Backbone.View.extend({
 var TaskView = Backbone.View.extend({
 	className: "task",
 	initialize: function(){
-
+		this.on('change', this.render, this);
 	},
 	render: function(){
-		var hashtag = /(#[^\s]+)/g;
+		var text = this.model.get('input');
+		if (!this.model.get('parse')) {
+			this.model.set('parse', this.parse(text));
+		}
+		this.$el.html(this.model.get('parse'));
 
-		var taskrawtext = this.model.get('input');
-		taskrawtext = taskrawtext.replace(hashtag, "<span class='tag'>$1</span>");
-
-		this.$el.html("<span>"+taskrawtext+"</span>");
+		if (this.model.get('done')) {
+			this.$el.addClass('done');
+		} else {
+			this.$el.removeClass('done');
+		}
 		return this;
+	},
+	parse: function(text){
+		//hash tags
+		var hashtag = /(#[^\s]+)/g;
+		text = text.replace(hashtag, "<span class='tag'>$1</span>");
+
+		//time
+		var bytime = /\b(by\s)\b(\d{1,2}(\d{2}hrs|(\s?(am|pm))|(:?\d{2}))?)\b/g;
+		text = text.replace(bytime, "<span class='date'>$1$2</span>");
+
+		var time = /\b(\d{1,2})(\d{2}hrs|((\d{1,2})?\s?(am|pm))|(:?\d{2}))\b/g;
+		text = text.replace(time, "<span class='date'>$1$2</span>");
+
+		return text;
 	}
 });
 
 var Task = Backbone.Model.extend({
-
+	done: function(){
+		this.set("done", true);
+	},
+	defaults: {
+		"done" : false
+	}
 });
 
 var Tasks = Backbone.Collection.extend({
 	model: Task
 });
 
+//mix-in underscore string functions
+_.mixin(_.string.exports());
 var app = new AppView();
