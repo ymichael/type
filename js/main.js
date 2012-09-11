@@ -49,6 +49,20 @@ var AppView = Backbone.View.extend({
 				}
 			}
 
+			if (inputstring.length < 6) {
+				var isClear = true;
+				for (var k = 0; k < inputstring.length; k++) {
+					// done
+					if (inputstring[k] !== "+clear"[k]) {
+						isClear = false;
+					}
+				}
+
+				if (isClear) {
+					return this.$(".input").val("+clear ");
+				}
+			}
+
 			if (inputstring.length < 8) {
 				// archive
 				var isArchive = true;
@@ -125,6 +139,11 @@ var AppView = Backbone.View.extend({
 			
 			//replace input field value
 			return this.$(".input").val("");
+		} else if (tokens[0] === "+clear") {
+			_.each(this.tasks.pluck("id"), function(task_id){
+				this.tasks.get(task_id).archive();
+			}, this);
+			return this.$(".input").val("");
 		} else {
 			this.createtask(inputstring);
 		}
@@ -189,6 +208,12 @@ var TaskView = Backbone.View.extend({
 		text = text.replace(time, "<span class='date'>$1$2</span>");
 
 		return text;
+	},
+	events: {
+		"click" : "toggle"
+	},
+	toggle: function(){
+		this.model.toggle();
 	}
 });
 
@@ -204,6 +229,9 @@ var Task = Backbone.Model.extend({
 	},
 	archive: function(){
 		this.destroy();
+	},
+	toggle: function(){
+		this.set("done", !this.get("done"));
 	}
 });
 
