@@ -25,12 +25,18 @@ body {
     border: none;
     outline: none;
   }
-  .margin {
+  #bottom-margin {
+    margin-top: 10px;
+    height: 10px;
+    border-top: solid 1px lighten(lightblue, 10);
+    border-bottom: dashed 1px fadeout(#d70, 80);
+  }
+  #margin {
     position: absolute;
     top: 1%;
     height: 98%;
     left: 10px;
-    border-left: solid 1px fadeout(#d70, 60)
+    border-left: solid 1px fadeout(#d70, 60);
   }
   #tasks {
     .task {
