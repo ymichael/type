@@ -2,6 +2,7 @@ var AppView = Backbone.View.extend({
 	el: "#window",
 	initialize: function(){
 		this.tasks = new Tasks();
+		this.tasks.fetch();
 		this.render();
 	},
 	render: function(){
@@ -109,19 +110,18 @@ var AppView = Backbone.View.extend({
 				return;
 			}
 
-
-			// remove from collection
 			var match = matches[0];
-			this.tasks.remove(match);
 			
 			//replace input field value
-			return this.$(".input").val(match.get('input'));
+			this.$(".input").val(match.get('input'));
+			
+			// remove from collection
+			match.destroy();
 		} else if (tokens[0] === "+archive") {
-			matches = this.tasks.filter(function(task){
-				return task.get('done') === true;
+			matches = this.tasks.done();
+			_.each(matches, function(task){
+				task.archive();
 			});
-
-			this.tasks.remove(matches);
 			
 			//replace input field value
 			return this.$(".input").val("");
@@ -130,8 +130,7 @@ var AppView = Backbone.View.extend({
 		}
 	},
 	createtask: function(inputstring){
-		var task = new Task({input: inputstring});
-		this.tasks.add(task);
+		this.tasks.create({input: inputstring});
 
 		//clear input field
 		this.$(".input").val("");
@@ -194,16 +193,28 @@ var TaskView = Backbone.View.extend({
 });
 
 var Task = Backbone.Model.extend({
+	initialize: function(){
+		this.on('change', this.save, this);
+	},
 	done: function(){
 		this.set("done", true);
 	},
 	defaults: {
 		"done" : false
+	},
+	archive: function(){
+		this.destroy();
 	}
 });
 
 var Tasks = Backbone.Collection.extend({
-	model: Task
+	model: Task,
+	localStorage: new Store("type-tasks"),
+	done: function(){
+		return this.filter(function(task){
+				return task.get('done');
+		});
+	}
 });
 
 //mix-in underscore string functions
