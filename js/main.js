@@ -1,3 +1,16 @@
+// Global Commands
+var COMMANDKEY = "+";
+var cmds = {
+	"done": "done",
+	"edit": "edit",
+	"archive": "archive",
+	"clear": "clear"
+};
+_.each(cmds, function(cmd){
+	cmds[cmd] = COMMANDKEY + cmd;
+});
+
+
 var AppView = Backbone.View.extend({
 	el: "#window",
 	initialize: function(){
@@ -12,9 +25,10 @@ var AppView = Backbone.View.extend({
 		this.tasklist.render();
 	},
 	events: {
-		"keydown input": "keypress"
+		"keydown input": "keydown",
+		"keyup input": "keyup"
 	},
-	keypress: function(e){
+	keydown: function(e){
 		if (e.keyCode === 13) {
 			this.executecommand();
 		} else if (e.keyCode === 9) {
@@ -22,79 +36,104 @@ var AppView = Backbone.View.extend({
 			this.autocomplete();
 		}
 	},
+	keyup: function(e){
+		this.showautocompletesuggestions();
+	},
 	autocomplete: function(){
 		var inputstring = this.$(".input").val();
+		var tokens = inputstring.split(" ");
 
-		// check for commands keys
-		if (inputstring[0] === "+" && inputstring.length > 1) {
-			if (inputstring.length < 5) {
-				var isDone = true;
-				var isEdit = true;
-				for (var i = 0; i < inputstring.length; i++) {
-					// done
-					if (inputstring[i] !== "+done"[i]) {
-						isDone = false;
-					}
-
-					// edit
-					if (inputstring[i] !== "+edit"[i]) {
-						isEdit = false;
-					}
-				}
-
-				if (isDone) {
-					return this.$(".input").val("+done ");
-				} else if (isEdit) {
-					return this.$(".input").val("+edit ");
-				}
-			}
-
-			if (inputstring.length < 6) {
-				var isClear = true;
-				for (var k = 0; k < inputstring.length; k++) {
-					// done
-					if (inputstring[k] !== "+clear"[k]) {
-						isClear = false;
-					}
-				}
-
-				if (isClear) {
-					return this.$(".input").val("+clear ");
-				}
-			}
-
-			if (inputstring.length < 8) {
-				// archive
-				var isArchive = true;
-				for (var j = 0; j < inputstring.length; j++) {
-					// done
-					if (inputstring[j] !== "+archive"[j]) {
-						isArchive = false;
-					}
-				}
-
-				if (isArchive) {
-					return this.$(".input").val("+archive ");
-				}
-			}
+		// autocomplete commands keys
+		if (inputstring[0] === "+" && inputstring.length > 1 && tokens.length < 2) {
+			return this.autocompletecommand(inputstring);
 		}
+	},
+	showautocompletesuggestions: function(){
+		var inputstring = this.$(".input").val();
+		var tokens = inputstring.split(" ");
 
+		if (tokens.length === 1 || inputstring === "") {
+			return this.tasklist.render();
+		}
 
 		// autocomplete tasks
-		var tokens = inputstring.split(" ");
-		if (tokens.length < 2) {
-			return;
+		if (tokens.length > 1) {
+			// check for various commands
+			var command = tokens[0];
+			// if match "done", "edit"
+			// autocomplete
+			
+			tokens.splice(0, 1);
+			var prefix = tokens.join(" ");
+
+			if (command === cmds['done'] || command === cmds['edit']){
+				var matches = this.tasks.filter(function(task){
+					return _(task.get('input')).startsWith(prefix);
+				});
+
+				this.autocompletecollection = new Tasks(matches);
+				this.tasklist.renderautocomplete(this.autocompletecollection);
+			}
 		}
-		
-		tokens.splice(0, 1);
-		var prefix = tokens.join(" ");
+	},
+	autocompletecommand: function(inputstring){
+		if (inputstring.length < 5) {
+			var isDone = true;
+			var isEdit = true;
+			for (var i = 0; i < inputstring.length; i++) {
+				// done
+				if (inputstring[i] !== cmds['done'][i]) {
+					isDone = false;
+				}
+
+				// edit
+				if (inputstring[i] !== cmds['edit'][i]) {
+					isEdit = false;
+				}
+			}
+
+			if (isDone) {
+				return this.$(".input").val(cmds['done'] + " ");
+			} else if (isEdit) {
+				return this.$(".input").val(cmds['edit'] + " ");
+			}
+		}
+
+		if (inputstring.length < 6) {
+			var isClear = true;
+			for (var k = 0; k < inputstring.length; k++) {
+				// done
+				if (inputstring[k] !== cmds['clear'][k]) {
+					isClear = false;
+				}
+			}
+
+			if (isClear) {
+				return this.$(".input").val(cmds['clear'] + " ");
+			}
+		}
+
+		if (inputstring.length < 8) {
+			// archive
+			var isArchive = true;
+			for (var j = 0; j < inputstring.length; j++) {
+				// done
+				if (inputstring[j] !== cmds['archive'][j]) {
+					isArchive = false;
+				}
+			}
+
+			if (isArchive) {
+				return this.$(".input").val(cmds['archive'] + " ");
+			}
+		}
 	},
 	executecommand: function(){
 		var inputstring = this.$(".input").val();
 		var tokens = inputstring.split(" ");
 
 		var prefix, matches;
-		if (tokens[0] === "+done") {
+		if (tokens[0] === cmds['done']) {
 			tokens.splice(0, 1);
 			prefix = tokens.join(" ");
 
@@ -105,11 +144,10 @@ var AppView = Backbone.View.extend({
 			_.each(matches, function(task){
 				task.done();
 			});
-
 			
 			//clear input field
 			return this.$(".input").val("");
-		} else if (tokens[0] === "+edit") {
+		} else if (tokens[0] === cmds["edit"]) {
 			tokens.splice(0, 1);
 			prefix = tokens.join(" ");
 
@@ -131,7 +169,7 @@ var AppView = Backbone.View.extend({
 			
 			// remove from collection
 			match.destroy();
-		} else if (tokens[0] === "+archive") {
+		} else if (tokens[0] === cmds["archive"]) {
 			matches = this.tasks.done();
 			_.each(matches, function(task){
 				task.archive();
@@ -139,7 +177,7 @@ var AppView = Backbone.View.extend({
 			
 			//replace input field value
 			return this.$(".input").val("");
-		} else if (tokens[0] === "+clear") {
+		} else if (tokens[0] === cmds["clear"]) {
 			_.each(this.tasks.pluck("id"), function(task_id){
 				this.tasks.get(task_id).archive();
 			}, this);
@@ -173,6 +211,23 @@ var TaskListView = Backbone.View.extend({
 			this.$el.html(fragment);
 		}
 		return this;
+	},
+	renderautocomplete: function(collection){
+		if (collection.length === 0) {
+			this.$el.html("<div class='task center'>no tasks.</div>");
+		} else {
+			var fragment = document.createDocumentFragment();
+			collection.each(function(task, index){
+				var taskview = new TaskView({model: task});
+				fragment.appendChild(taskview.render().el);
+				
+				if (index === 0){
+					taskview.highlight();
+				}
+			});
+			this.$el.html(fragment);
+		}
+		return this;
 	}
 });
 
@@ -180,13 +235,10 @@ var TaskView = Backbone.View.extend({
 	className: "task",
 	initialize: function(){
 		this.on('change', this.render, this);
+		_.bindAll(this, 'render');
 	},
 	render: function(){
-		var text = this.model.get('input');
-		if (!this.model.get('parse')) {
-			this.model.set('parse', this.parse(text));
-		}
-		this.$el.html(this.model.get('parse'));
+		this.$el.html(this.model.parsed());
 
 		if (this.model.get('done')) {
 			this.$el.addClass('done');
@@ -195,25 +247,14 @@ var TaskView = Backbone.View.extend({
 		}
 		return this;
 	},
-	parse: function(text){
-		//hash tags
-		var hashtag = /(#[^\s]+)/g;
-		text = text.replace(hashtag, "<span class='tag'>$1</span>");
-
-		//time
-		var bytime = /\b(by\s)\b(\d{1,2}(\d{2}hrs|(\s?(am|pm))|(:?\d{2}))?)\b/g;
-		text = text.replace(bytime, "<span class='date'>$1$2</span>");
-
-		var time = /\b(\d{1,2})(\d{2}hrs|((\d{1,2})?\s?(am|pm))|(:?\d{2}))\b/g;
-		text = text.replace(time, "<span class='date'>$1$2</span>");
-
-		return text;
-	},
 	events: {
 		"click" : "toggle"
 	},
 	toggle: function(){
 		this.model.toggle();
+	},
+	highlight: function(){
+		this.$el.addClass("highlight");
 	}
 });
 
@@ -232,6 +273,27 @@ var Task = Backbone.Model.extend({
 	},
 	toggle: function(){
 		this.set("done", !this.get("done"));
+	},
+	parsed: function(){
+		if (this.get('parse')) {
+			return this.get('parse');
+		}
+
+		var text = this.get('input');
+
+		//hash tags
+		var hashtag = /(#[^\s]+)/g;
+		text = text.replace(hashtag, "<span class='tag'>$1</span>");
+
+		//time
+		var bytime = /\b(by\s)\b(\d{1,2}(\d{2}hrs|(\s?(am|pm))|(:?\d{2}))?)\b/g;
+		text = text.replace(bytime, "<span class='date'>$1$2</span>");
+
+		var time = /\b((\d{2})(\d{2}hrs|((\d{2})?\s?(am|pm))|(:?\d{2}))|(\d{1})((:\d{2})|(\s?(am|pm)))|(\d{2}hrs))\b/g;
+		text = text.replace(time, "<span class='date'>$1</span>");
+
+		this.set('parse', text);
+		return this.get('parse');
 	}
 });
 
