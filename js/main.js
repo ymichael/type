@@ -15,6 +15,7 @@ var AppView = Backbone.View.extend({
 	el: "#window",
 	initialize: function(){
 		this.tasks = new Tasks();
+		this.autocompletecollection = new Tasks();
 		this.tasks.fetch();
 		this.render();
 	},
@@ -47,6 +48,46 @@ var AppView = Backbone.View.extend({
 		if (inputstring[0] === "+" && inputstring.length > 1 && tokens.length < 2) {
 			return this.autocompletecommand(inputstring);
 		}
+
+		// autocomplete prefix
+		var command = tokens[0];
+		if (command === cmds['done'] || command === cmds['edit']) {
+			//auto complete longest common prefix;
+			tokens.splice(0, 1);
+			var prefix = tokens.join(" ");
+
+			var x;
+			if (this.autocompletecollection.length === 1){
+				//complete all
+				x = command + " " + this.autocompletecollection.models[0].get('input');
+				this.$(".input").val(x);
+			} else if (this.autocompletecollection.length > 1){
+				var matchstrings = this.autocompletecollection.pluck('input');
+
+				var longestmatchingprefix = "";
+
+				for (var i = 0; i< matchstrings[0].length; i++){
+					var match = true;
+					var compare = matchstrings[0].charAt(i);
+					_.each(matchstrings, function(string){
+						if (string.charAt(i) !== compare){
+							match = false;
+						}
+					});
+
+					if (!match) {
+						break;
+					} else {
+						longestmatchingprefix += compare;
+					}
+				}
+
+				x = command + " " + longestmatchingprefix;
+				this.$(".input").val(x);
+
+			}
+		}
+
 	},
 	showautocompletesuggestions: function(){
 		var inputstring = this.$(".input").val();
@@ -71,7 +112,7 @@ var AppView = Backbone.View.extend({
 					return _(task.get('input')).startsWith(prefix);
 				});
 
-				this.autocompletecollection = new Tasks(matches);
+				this.autocompletecollection.reset(matches);
 				this.tasklist.renderautocomplete(this.autocompletecollection);
 			}
 		}
