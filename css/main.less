@@ -2,11 +2,12 @@
 @import "reset.less";
 
 body {
- background-color: fadeout(#eee, 80); 
+  background-color: fadeout(#eee, 80); 
+  font-family: "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif; 
 }
 #window {
+  z-index: 10;
   font-size: 20px;
-  font-family: "helvetica neue";
   font-weight: 100;
   margin: auto;
   margin-top: 150px;
@@ -73,4 +74,33 @@ body {
 }
 .center {
   text-align: center;
+}
+
+
+// command help
+#help {
+  width: 400px;
+  position: absolute;
+  bottom: 0;
+  z-index: -10px;
+  padding: 20px;
+  font-weight: 300;
+  color: #ccc;
+  h1 {
+    font-size: 25px;
+    padding: 5px;
+  }
+  h2 {
+    font-size: 20px;
+    padding: 10px 5px 5px 5px;
+  }
+
+  .cmdwrapper {
+    .cmd {
+      font-size: 15px;
+      display: inline-block;
+      width: 110px;
+      padding: 5px;
+    }
+  }
 }

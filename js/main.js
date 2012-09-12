@@ -1,5 +1,5 @@
 // Global Commands
-var COMMANDKEY = "+";
+var COMMANDKEY = ":";
 var cmds = {
 	"done": "done",
 	"edit": "edit",
@@ -45,7 +45,7 @@ var AppView = Backbone.View.extend({
 		var tokens = inputstring.split(" ");
 
 		// autocomplete commands keys
-		if (inputstring[0] === "+" && inputstring.length > 1 && tokens.length < 2) {
+		if (inputstring[0] === COMMANDKEY && inputstring.length > 1 && tokens.length < 2) {
 			return this.autocompletecommand(inputstring);
 		}
 
@@ -87,7 +87,6 @@ var AppView = Backbone.View.extend({
 
 			}
 		}
-
 	},
 	showautocompletesuggestions: function(){
 		var inputstring = this.$(".input").val();
@@ -182,9 +181,9 @@ var AppView = Backbone.View.extend({
 				return _(task.get('input')).startsWith(prefix);
 			});
 
-			_.each(matches, function(task){
-				task.done();
-			});
+			if (matches.length > 0) {
+				matches[0].done();
+			}
 			
 			//clear input field
 			return this.$(".input").val("");
