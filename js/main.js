@@ -35,10 +35,26 @@ var AppView = Backbone.View.extend({
 		} else if (e.keyCode === 9) {
 			e.preventDefault();
 			this.autocomplete();
+		} else if (e.keyCode === 32) {
+			// alias commands to closest non-ambiguous command
+			this.guesscommand();
 		}
 	},
 	keyup: function(e){
 		this.showautocompletesuggestions();
+	},
+	guesscommand: function(){
+		var inputstring = this.$(".input").val();
+		var tokens = inputstring.split(" ");
+		var command = tokens[0];
+
+		// if no command prefix. return early
+
+		// if command matches an existing command
+		// return early
+
+		// if command matches the prefix of a command
+		// replace it with the command
 	},
 	autocomplete: function(){
 		var inputstring = this.$(".input").val();
