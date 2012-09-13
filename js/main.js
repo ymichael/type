@@ -4,19 +4,21 @@ var cmds = {
 	"done": "done",
 	"edit": "edit",
 	"archive": "archive",
-	"clear": "clear"
+	"clear": "clear",
+	"undo": "undo"
 };
 _.each(cmds, function(cmd){
 	cmds[cmd] = COMMANDKEY + cmd;
 });
-
 
 var AppView = Backbone.View.extend({
 	el: "#window",
 	initialize: function(){
 		this.tasks = new Tasks();
 		this.autocompletecollection = new Tasks();
+		this.undostack = new UndoStack(null, {tasks: this.tasks});
 		this.tasks.fetch();
+		this.undostack.fetch();
 		this.render();
 	},
 	render: function(){
@@ -49,12 +51,37 @@ var AppView = Backbone.View.extend({
 		var command = tokens[0];
 
 		// if no command prefix. return early
+		if (command[0] !== COMMANDKEY) {
+			return;
+		}
 
 		// if command matches an existing command
 		// return early
+		if (command in _.values(cmds)) {
+			return;
+		}
 
 		// if command matches the prefix of a command
 		// replace it with the command
+		var commands = _.values(cmds);
+		for (var i = 0; i < commands.length; i++) {
+			if (_(commands[i]).startsWith(command)) {
+
+				// replace with command
+				tokens.splice(0, 1);
+				var prefix = tokens.join(" ");
+				var value;
+				if (prefix.length === 0) {
+					value = commands[i] + prefix;
+				} else {
+					value = commands[i] + " " + prefix;
+				}
+
+				
+				this.$(".input").val(value);
+				break;
+			}
+		}
 	},
 	autocomplete: function(){
 		var inputstring = this.$(".input").val();
@@ -136,10 +163,16 @@ var AppView = Backbone.View.extend({
 		if (inputstring.length < 5) {
 			var isDone = true;
 			var isEdit = true;
+			var isUndo = true;
 			for (var i = 0; i < inputstring.length; i++) {
 				// done
 				if (inputstring[i] !== cmds['done'][i]) {
 					isDone = false;
+				}
+
+				// undo
+				if (inputstring[i] !== cmds['undo'][i]) {
+					isUndo = false;
 				}
 
 				// edit
@@ -152,6 +185,8 @@ var AppView = Backbone.View.extend({
 				return this.$(".input").val(cmds['done'] + " ");
 			} else if (isEdit) {
 				return this.$(".input").val(cmds['edit'] + " ");
+			} else if (isUndo) {
+				return this.$(".input").val(cmds['undo'] + " ");
 			}
 		}
 
@@ -185,10 +220,12 @@ var AppView = Backbone.View.extend({
 		}
 	},
 	executecommand: function(){
+		this.guesscommand();
+
 		var inputstring = this.$(".input").val();
 		var tokens = inputstring.split(" ");
 
-		var prefix, matches;
+		var prefix, matches, undo;
 		if (tokens[0] === cmds['done']) {
 			tokens.splice(0, 1);
 			prefix = tokens.join(" ");
@@ -199,6 +236,12 @@ var AppView = Backbone.View.extend({
 
 			if (matches.length > 0) {
 				matches[0].done();
+
+				// add to undo stack
+				this.undostack.create({
+					type: "done",
+					task: matches[0].id
+				});
 			}
 			
 			//clear input field
@@ -211,10 +254,7 @@ var AppView = Backbone.View.extend({
 				return _(task.get('input')).startsWith(prefix);
 			});
 
-			
-			if (matches.length !== 1) {
-				// TODO
-				// only can edit one.
+			if (matches.length === 0) {
 				return;
 			}
 
@@ -223,10 +263,25 @@ var AppView = Backbone.View.extend({
 			//replace input field value
 			this.$(".input").val(match.get('input'));
 			
+			// add to undo stack
+			this.undostack.create({
+				type: "edit",
+				task: match.toJSON()
+			});
+
 			// remove from collection
 			match.destroy();
 		} else if (tokens[0] === cmds["archive"]) {
 			matches = this.tasks.done();
+		
+			// add to undo stack
+			this.undostack.create({
+				type: "archive",
+				tasks: _.map(matches, function(match){
+					return match.toJSON();
+				})
+			});
+
 			_.each(matches, function(task){
 				task.archive();
 			});
@@ -237,13 +292,31 @@ var AppView = Backbone.View.extend({
 			_.each(this.tasks.pluck("id"), function(task_id){
 				this.tasks.get(task_id).archive();
 			}, this);
+
+			_.each(this.undostack.pluck("id"), function(undo_id){
+				this.undostack.get(undo_id).destroy();
+			}, this);
+			return this.$(".input").val("");
+		} else if (tokens[0] === cmds["undo"]) {
+			this.undostack.undo();
 			return this.$(".input").val("");
 		} else {
 			this.createtask(inputstring);
 		}
 	},
 	createtask: function(inputstring){
-		this.tasks.create({input: inputstring});
+		var task = this.tasks.create({
+			input: inputstring
+		});
+
+		// add to undo stack
+		console.log(this.undostack);
+		
+		var model = new Undo({
+			type: "add",
+			task: task.id
+		});
+		this.undostack.create(model);
 
 		//clear input field
 		this.$(".input").val("");
@@ -362,6 +435,56 @@ var Tasks = Backbone.Collection.extend({
 		});
 	}
 });
+
+var Undo = Backbone.Model.extend({
+	localStorage: new Store("type-undostack")
+});
+var UndoStack = Backbone.Collection.extend({
+	initialize: function(models, options){
+		this.tasks = options.tasks;
+	},
+	localStorage: new Store("type-undostack"),
+	model: Undo,
+	undo: function(){
+		if (this.length === 0) {
+			return;
+		}
+
+		var lastaction = this.pop();
+		var type = lastaction.get('type');
+		if (type === "add") {
+			var taskadded = this.tasks.get(lastaction.get('task'));
+			var previous = this.at(this.length - 1);
+			if (previous && previous.get('type') === 'edit') {
+				var editedtask = this.pop();
+				var x = new Task(editedtask.get('task'));
+				x.save();
+				this.tasks.add(x);
+				editedtask.destroy();
+			}
+
+			taskadded.destroy();
+		} else if (type === "archive") {
+			var tasks = lastaction.get('tasks');
+			_.each(tasks, function(task){
+				var x = new Task(task.get('task'));
+				x.save();
+				this.tasks.add(x);
+			}, this);
+		} else if (type === "done") {
+			var taskdone = this.tasks.get(lastaction.get('task'));
+			taskdone.toggle();
+		} else if (type === "edit") {
+			var y = new Task(lastaction.get('task'));
+			y.save();
+			this.tasks.add(y);
+		}
+
+		//remove model from local storage
+		lastaction.destroy();
+	}
+});
+
 
 //mix-in underscore string functions
 _.mixin(_.string.exports());
