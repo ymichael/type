@@ -135,6 +135,30 @@ var AppView = Backbone.View.extend({
 		var inputstring = this.$(".input").val();
 		var tokens = inputstring.split(" ");
 
+		if (_(tokens[0]).startsWith("/")) {
+			var searchterm = tokens[0];
+
+			// filter by tags.
+			var search = searchterm.substring(1);
+			
+			var taggedtasks = this.tasks.filter(function(task){
+				var tags = task.get('tags');
+				var match = false;
+
+				for (var i = 0; i< tags.length; i++){
+					if (_(tags[i]).startsWith(search)) {
+						match = true;
+						break;
+					}
+				}
+				return match;
+			});
+			this.autocompletecollection.reset(taggedtasks);
+			this.tasklist.renderautocomplete(this.autocompletecollection);
+			return;
+		}
+
+
 		if (tokens.length === 1 || inputstring === "") {
 			return this.tasklist.render();
 		}
@@ -220,6 +244,7 @@ var AppView = Backbone.View.extend({
 		}
 	},
 	executecommand: function(){
+		// guess command
 		this.guesscommand();
 
 		var inputstring = this.$(".input").val();
@@ -395,7 +420,7 @@ var Task = Backbone.Model.extend({
 		this.set("done", true);
 	},
 	defaults: {
-		"done" : false
+		"done": false
 	},
 	archive: function(){
 		this.destroy();
@@ -412,6 +437,18 @@ var Task = Backbone.Model.extend({
 
 		//hash tags
 		var hashtag = /(#[^\s]+)/g;
+		
+		var hash = /#([^\s]+)/g;
+		
+		var tags = [];
+		var match = hash.exec(text);
+		while (match !== null) {
+			var tag = match[1];
+			tags.push(tag);
+			match = hash.exec(text);
+		}
+		this.set({'tags': tags});
+
 		text = text.replace(hashtag, "<span class='tag'>$1</span>");
 
 		//time
@@ -439,6 +476,7 @@ var Tasks = Backbone.Collection.extend({
 var Undo = Backbone.Model.extend({
 	localStorage: new Store("type-undostack")
 });
+
 var UndoStack = Backbone.Collection.extend({
 	initialize: function(models, options){
 		this.tasks = options.tasks;
