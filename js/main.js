@@ -335,7 +335,7 @@ var AppView = Backbone.View.extend({
 		});
 
 		// add to undo stack
-		console.log(this.undostack);
+		console.log(this.undostack.pluck('type'));
 		
 		var model = new Undo({
 			type: "add",
@@ -413,6 +413,7 @@ var TaskView = Backbone.View.extend({
 });
 
 var Task = Backbone.Model.extend({
+	localStorage: new Store("type-tasks"),
 	initialize: function(){
 		this.on('change', this.save, this);
 	},
@@ -447,6 +448,7 @@ var Task = Backbone.Model.extend({
 			tags.push(tag);
 			match = hash.exec(text);
 		}
+		
 		this.set({'tags': tags});
 
 		text = text.replace(hashtag, "<span class='tag'>$1</span>");
@@ -505,7 +507,7 @@ var UndoStack = Backbone.Collection.extend({
 		} else if (type === "archive") {
 			var tasks = lastaction.get('tasks');
 			_.each(tasks, function(task){
-				var x = new Task(task.get('task'));
+				var x = new Task(task);
 				x.save();
 				this.tasks.add(x);
 			}, this);
