@@ -186,11 +186,23 @@ body {
 .done .tag {
   color: rgba(8, 129, 179, 0.5);
 }
+.done .date {
+  color: rgba(215, 0, 0, 0.5);
+  font-weight: 200;
+}
 .highlight {
   background-color: rgba(173, 216, 230, 0.19999999999999996);
 }
 .date {
   color: #d70000;
+  font-weight: 200;
+}
+.plus {
+  color: #d70;
+  font-weight: 200;
+}
+.minus {
+  color: #ccc;
   font-weight: 200;
 }
 .center {

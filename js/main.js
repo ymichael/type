@@ -421,7 +421,8 @@ var Task = Backbone.Model.extend({
 		this.set("done", true);
 	},
 	defaults: {
-		"done": false
+		"done": false,
+		"priority": 0
 	},
 	archive: function(){
 		this.destroy();
@@ -450,7 +451,6 @@ var Task = Backbone.Model.extend({
 		}
 		
 		this.set({'tags': tags});
-
 		text = text.replace(hashtag, "<span class='tag'>$1</span>");
 
 		//time
@@ -460,6 +460,29 @@ var Task = Backbone.Model.extend({
 		var time = /\b((\d{2})(\d{2}hrs|((\d{2})?\s?(am|pm))|(:?\d{2}))|(\d{1})((:\d{2})|(\s?(am|pm)))|(\d{2}hrs))\b/g;
 		text = text.replace(time, "<span class='date'>$1</span>");
 
+		//date
+		var date = /\b(\d{1,2}(\/\d{1,2}|\s(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december))(\s\d{2}(\d{2})?)?)\b/g;
+		text = text.replace(date, "<span class='date'>$1</span>");
+		
+		//priority
+		var minus = /\s(-\d+)$/;
+		var plus = /\s(\+\d+)$/;
+		var lowpriority = minus.exec(text);
+		var highpriority = plus.exec(text);
+		text = text.replace(minus, "<span class='minus'> $1</span>");
+		text = text.replace(plus, "<span class='plus'> $1</span>");
+
+		if (lowpriority) {
+			this.set({
+				'priority': parseInt(lowpriority[1], 10)
+			});
+		} else if (highpriority) {
+			this.set({
+				'priority': parseInt(highpriority[1], 10)
+			});
+		}
+
+
 		this.set('parse', text);
 		return this.get('parse');
 	}
@@ -468,6 +491,9 @@ var Task = Backbone.Model.extend({
 var Tasks = Backbone.Collection.extend({
 	model: Task,
 	localStorage: new Store("type-tasks"),
+	comparator: function(task){
+		return -task.get('priority');
+	},
 	done: function(){
 		return this.filter(function(task){
 				return task.get('done');
