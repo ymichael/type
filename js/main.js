@@ -335,7 +335,8 @@ var AppView = Backbone.View.extend({
 	createtask: function(inputstring){
 		var task = this.tasks.create({
 			input: inputstring
-		});
+		}, {silent: true});
+		this.tasks.sort();
 
 		// add to undo stack
 		console.log(this.undostack.pluck('type'));
