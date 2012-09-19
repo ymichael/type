@@ -297,20 +297,23 @@ var AppView = Backbone.View.extend({
 			// remove from collection
 			match.destroy();
 		} else if (tokens[0] === cmds["archive"]) {
-			matches = this.tasks.done();
-		
-			// add to undo stack
-			this.undostack.create({
-				type: "archive",
-				tasks: _.map(matches, function(match){
-					return match.toJSON();
-				})
-			});
-
-			_.each(matches, function(task){
-				task.archive();
-			});
+			if (tokens.length === 1) {
+				matches = this.tasks.done();
 			
+				// add to undo stack
+				this.undostack.create({
+					type: "archive",
+					tasks: _.map(matches, function(match){
+						return match.toJSON();
+					})
+				});
+
+				_.each(matches, function(task){
+					task.archive();
+				});
+			} else {
+				//todo.
+			}
 			//replace input field value
 			return this.$(".input").val("");
 		} else if (tokens[0] === cmds["clear"]) {
